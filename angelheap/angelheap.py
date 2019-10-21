@@ -1229,68 +1229,105 @@ def put_tcache():
 
 
 
-def putheapinfo(arena=None):
+def putheapinfo(typ,arena=None):
     if capsize == 0 :
         arch = getarch()
-    if not putfastbin(arena) :
-        return
-    if "memerror" in top :
-        print("\033[35m %20s:\033[31m 0x%x \033[33m(size : 0x%x)\033[31m (%s)\033[37m " % ("top",top["addr"],top["size"],top["memerror"]))
-    else :
-        print("\033[35m %20s:\033[34m 0x%x \033[33m(size : 0x%x)\033[37m " % ("top",top["addr"],top["size"]))
 
-    print("\033[35m %20s:\033[34m 0x%x \033[33m(size : 0x%x)\033[37m " % ("last_remainder",last_remainder["addr"],last_remainder["size"]))
-    if unsortbin and len(unsortbin) > 0 :
-        print("\033[35m %20s:\033[37m " % "unsortbin",end="")
-        for chunk in unsortbin :
-            if "memerror" in chunk :
-                print("\033[31m0x%x (%s)\033[37m" % (chunk["addr"],chunk["memerror"]),end = "")
-            elif chunk["overlap"] and chunk["overlap"][0]:
-                print("\033[31m0x%x (overlap chunk with \033[36m0x%x(%s)\033[31m )\033[37m" % (chunk["addr"],chunk["overlap"][0]["addr"],chunk["overlap"][1]),end = "")
-            elif chunk == unsortbin[-1]:
-                print("\033[34m0x%x\033[37m \33[33m(size : 0x%x)\033[37m" % (chunk["addr"],chunk["size"]),end = "")
-            else :
-                print("0x%x \33[33m(size : 0x%x)\033[37m" % (chunk["addr"],chunk["size"]),end = "")
-            if chunk != unsortbin[-1]:
-                print(" <--> ",end = "")
-        print("")
-    else :
-        print("\033[35m %20s:\033[37m 0x%x" % ("unsortbin",0)) #no chunk in unsortbin
-    for size,bins in smallbin.items() :
-        idx = int((int(size,16)/(capsize*2)))-2 
-        print("\033[33m(0x%03x)  %s[%2d]:\033[37m " % (int(size,16),"smallbin",idx),end="")
-        for chunk in bins :
-            if "memerror" in chunk :
-                print("\033[31m0x%x (%s)\033[37m" % (chunk["addr"],chunk["memerror"]),end = "")
-            elif chunk["size"] != int(size,16) :
-                print("\033[36m0x%x (size error (0x%x))\033[37m" % (chunk["addr"],chunk["size"]),end = "")
-            elif chunk["overlap"] and chunk["overlap"][0]:
-                print("\033[31m0x%x (overlap chunk with \033[36m0x%x(%s)\033[31m )\033[37m" % (chunk["addr"],chunk["overlap"][0]["addr"],chunk["overlap"][1]),end = "")
-            elif chunk == bins[-1]:
-                print("\033[34m0x%x\033[37m" % chunk["addr"],end = "")
-            else :
-                print("0x%x " % chunk["addr"],end = "")
-            if chunk != bins[-1]:
-                print(" <--> ",end = "")
-        print("") 
-    for idx,bins in largebin.items():
-        print("\033[33m  %15s[%2d]:\033[37m " % ("largebin",idx-64),end="")
-        for chunk in bins :
-            if "memerror" in chunk :
-                print("\033[31m0x%x (%s)\033[37m" % (chunk["addr"],chunk["memerror"]),end = "")
-            elif chunk["overlap"] and chunk["overlap"][0]:
-                print("\033[31m0x%x (overlap chunk with \033[36m0x%x(%s)\033[31m )\033[37m" % (chunk["addr"],chunk["overlap"][0]["addr"],chunk["overlap"][1]),end = "")
-            elif largbin_index(chunk["size"]) != idx : 
-                print("\033[31m0x%x (incorrect bin size :\033[36m 0x%x\033[31m)\033[37m" % (chunk["addr"],chunk["size"]),end = "")
-            elif chunk == bins[-1]:
-                print("\033[34m0x%x\033[37m \33[33m(size : 0x%x)\033[37m" % (chunk["addr"],chunk["size"]),end = "")
-            else :
-                print("0x%x \33[33m(size : 0x%x)\033[37m" % (chunk["addr"],chunk["size"]),end = "")
-            if chunk != bins[-1]:
-                print(" <--> ",end = "")
-        print("")
-    if not arena :
+    if not get_heap_info(arena):
+         print("Can't find heap info")
+         return False
+
+    if typ == 'f':
+        typ = 'fastbin'
+    elif typ == 's':
+        typ = 'smallbin'
+    elif typ == 'l':
+        typ = 'largebin'
+    elif typ == 't':
+        typ = 'tcache'
+
+    show = {
+        'fastbin': True,
+        'smallbin': True,
+        'largebin': True,
+        'tcache': True,
+        'top': True,
+    }
+
+    if typ != 'default':
+        for _ in show.keys():
+            show[_] = False
+        show[typ] = True
+
+    if show['fastbin']:
+        if not putfastbin(arena) :
+            return
+
+    if show['top']:
+        if "memerror" in top :
+            print("\033[35m %20s:\033[31m 0x%x \033[33m(size : 0x%x)\033[31m (%s)\033[37m " % ("top",top["addr"],top["size"],top["memerror"]))
+        else :
+            print("\033[35m %20s:\033[34m 0x%x \033[33m(size : 0x%x)\033[37m " % ("top",top["addr"],top["size"]))
+
+        print("\033[35m %20s:\033[34m 0x%x \033[33m(size : 0x%x)\033[37m " % ("last_remainder",last_remainder["addr"],last_remainder["size"]))
+        if unsortbin and len(unsortbin) > 0 :
+
+            print("\033[35m %20s:\033[37m " % "unsortbin",end="")
+            for chunk in unsortbin :
+                if "memerror" in chunk :
+                    print("\033[31m0x%x (%s)\033[37m" % (chunk["addr"],chunk["memerror"]),end = "")
+                elif chunk["overlap"] and chunk["overlap"][0]:
+                    print("\033[31m0x%x (overlap chunk with \033[36m0x%x(%s)\033[31m )\033[37m" % (chunk["addr"],chunk["overlap"][0]["addr"],chunk["overlap"][1]),end = "")
+                elif chunk == unsortbin[-1]:
+                    print("\033[34m0x%x\033[37m \33[33m(size : 0x%x)\033[37m" % (chunk["addr"],chunk["size"]),end = "")
+                else :
+                    print("0x%x \33[33m(size : 0x%x)\033[37m" % (chunk["addr"],chunk["size"]),end = "")
+                if chunk != unsortbin[-1]:
+                    print(" <--> ",end = "")
+            print("")
+        else :
+            print("\033[35m %20s:\033[37m 0x%x" % ("unsortbin",0)) #no chunk in unsortbin
+
+    if show['smallbin']:
+        for size,bins in smallbin.items() :
+            idx = int((int(size,16)/(capsize*2)))-2
+            print("\033[33m(0x%03x)  %s[%2d]:\033[37m " % (int(size,16),"smallbin",idx),end="")
+            for chunk in bins :
+                if "memerror" in chunk :
+                    print("\033[31m0x%x (%s)\033[37m" % (chunk["addr"],chunk["memerror"]),end = "")
+                elif chunk["size"] != int(size,16) :
+                    print("\033[36m0x%x (size error (0x%x))\033[37m" % (chunk["addr"],chunk["size"]),end = "")
+                elif chunk["overlap"] and chunk["overlap"][0]:
+                    print("\033[31m0x%x (overlap chunk with \033[36m0x%x(%s)\033[31m )\033[37m" % (chunk["addr"],chunk["overlap"][0]["addr"],chunk["overlap"][1]),end = "")
+                elif chunk == bins[-1]:
+                    print("\033[34m0x%x\033[37m" % chunk["addr"],end = "")
+                else :
+                    print("0x%x " % chunk["addr"],end = "")
+                if chunk != bins[-1]:
+                    print(" <--> ",end = "")
+            print("")
+
+    if show['largebin']:
+        for idx,bins in largebin.items():
+            print("\033[33m  %15s[%2d]:\033[37m " % ("largebin",idx-64),end="")
+            for chunk in bins :
+                if "memerror" in chunk :
+                    print("\033[31m0x%x (%s)\033[37m" % (chunk["addr"],chunk["memerror"]),end = "")
+                elif chunk["overlap"] and chunk["overlap"][0]:
+                    print("\033[31m0x%x (overlap chunk with \033[36m0x%x(%s)\033[31m )\033[37m" % (chunk["addr"],chunk["overlap"][0]["addr"],chunk["overlap"][1]),end = "")
+                elif largbin_index(chunk["size"]) != idx :
+                    print("\033[31m0x%x (incorrect bin size :\033[36m 0x%x\033[31m)\033[37m" % (chunk["addr"],chunk["size"]),end = "")
+                elif chunk == bins[-1]:
+                    print("\033[34m0x%x\033[37m \33[33m(size : 0x%x)\033[37m" % (chunk["addr"],chunk["size"]),end = "")
+                else :
+                    print("0x%x \33[33m(size : 0x%x)\033[37m" % (chunk["addr"],chunk["size"]),end = "")
+                if chunk != bins[-1]:
+                    print(" <--> ",end = "")
+            print("")
+
+    if show['tcache'] and not arena :
         put_tcache()
+
     if corruptbin :
         print("\033[31m Some bins is corrupted !\033[37m")
 

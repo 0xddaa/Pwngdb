@@ -24,12 +24,26 @@ class AngelHeapCmd(object):
 
     def heapinfo(self,*arg):
         """ Print some information of heap """
-        (arena,) = normalize_argv(arg,1)
-        angelheap.putheapinfo(arena)
+        (typ,arena,) = normalize_argv(arg,2)
 
-    def heapinfoall(self):
-        """ Print some information of multiheap """
-        angelheap.putheapinfoall()
+        supported_typ = [
+            'all','default','top',
+            'f','fastbin',
+            's','smallbin',
+            'l','largebin',
+            't','tcache'
+        ]
+
+        if not typ:
+            typ = 'default'
+        elif typ not in supported_typ:
+            print("illegal type, show default info")
+            typ = 'default'
+
+        if typ == 'all':
+            angelheap.putheapinfoall()
+        else:
+            angelheap.putheapinfo(typ,arena)
 
     def arenainfo(self):
         """ Print all arena info """
